@@ -2,7 +2,7 @@ import google.generativeai as genai
 import os
 import pandas as pd
 import json
-import re  # For cleaning AI responses
+import re
 
 class Scrapex:
     def __init__(self):
@@ -16,12 +16,10 @@ class Scrapex:
         so that any extraneous text outside the JSON block is removed.
         """
         try:
-            # Find the first occurrence of "{" and the last occurrence of "}"
             start = text.find('{')
             end = text.rfind('}') + 1  # Include the closing brace.
             if start != -1 and end != -1:
                 json_str = text[start:end]
-                # Optionally, perform additional cleaning here if needed.
                 return json.loads(json_str)
         except json.JSONDecodeError as e:
             print(f"JSON decode error: {e}")
@@ -40,6 +38,7 @@ class Scrapex:
         - Official website
         - Contact email
         - LinkedIn profile URL
+        - Headquarters location
 
         Provide the result in a structured JSON format like:
         {{
@@ -47,21 +46,22 @@ class Scrapex:
             "Website": "https://example.com",
             "Email": "contact@example.com",
             "LinkedIn": "https://linkedin.com/company/example"
+            "Headquarters": "123 Example St, City, Country"
+            "Yahoo Finance": "https://finance.yahoo.com/quote/EXAMPLE",
+            "Company Description": "Example Corp is a leading company in...",
         }}
         """
 
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")  # ✅ Ensure correct model name
+            model = genai.GenerativeModel("gemini-1.5-flash")
             response = model.generate_content(prompt)
-            ai_text = response.text.strip()  # Extract and clean response
-
-            parsed_data = self._extract_json(ai_text)  # Try to extract JSON
-
+            ai_text = response.text.strip()
+            parsed_data = self._extract_json(ai_text)
+            
             if parsed_data:
-                return pd.DataFrame([parsed_data]), None  # Return tuple: (result, None)
+                return pd.DataFrame([parsed_data]), None
             else:
                 return None, "Search Error: Failed to extract valid JSON."
-
         except Exception as e:
             return None, f"Search Error: {str(e)}"
 
@@ -85,16 +85,54 @@ class Scrapex:
         """
 
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")  # ✅ Ensure correct model name
+            model = genai.GenerativeModel("gemini-1.5-flash")
             response = model.generate_content(prompt)
-            ai_text = response.text.strip()  # Extract and clean response
-
-            parsed_analysis = self._extract_json(ai_text)  # Try to extract JSON
-
+            ai_text = response.text.strip()
+            parsed_analysis = self._extract_json(ai_text)
+            
             if parsed_analysis:
-                return parsed_analysis, None  # Return tuple: (result, None)
+                return parsed_analysis, None
             else:
                 return None, "Analysis Error: Failed to extract valid JSON."
-
         except Exception as e:
             return None, f"Analysis Error: {str(e)}"
+
+    def save(self, folder='results'):
+        """
+        Saves the scraped company data into CSV and Excel formats.
+        Expects the instance to have a 'company_data' attribute set externally.
+        """
+        try:
+            os.makedirs(folder, exist_ok=True)
+            csv_path = os.path.join(folder, 'data.csv')
+            excel_path = os.path.join(folder, 'data.xlsx')
+
+            # Check if company_data attribute exists and is not None
+            if not hasattr(self, 'company_data') or self.company_data is None:
+                print("Error in save(): 'company_data' attribute is not set.")
+                return False
+
+            # If CSV file exists, read and concatenate
+            if os.path.exists(csv_path):
+                try:
+                    existing_data = pd.read_csv(csv_path)
+                except Exception as read_err:
+                    print("Error reading existing CSV file:", read_err)
+                    existing_data = None
+
+                if existing_data is not None:
+                    new_data = pd.concat([existing_data, self.company_data], ignore_index=True)
+                else:
+                    new_data = self.company_data.copy()
+                new_data.to_csv(csv_path, index=False)
+                new_data.to_excel(excel_path, index=False)
+                print(f"Data successfully updated in {folder}/")
+            else:
+                # If no CSV file exists, simply write the new data.
+                self.company_data.to_csv(csv_path, index=False)
+                self.company_data.to_excel(excel_path, index=False)
+                print(f"Data saved for the first time in {folder}/")
+            return True
+        except Exception as e:
+            print("Failed to save data:", e)
+            return False
