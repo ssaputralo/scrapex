@@ -45,10 +45,10 @@ class Scrapex:
             "Company Name": "Example Corp",
             "Website": "https://example.com",
             "Email": "contact@example.com",
-            "LinkedIn": "https://linkedin.com/company/example"
-            "Headquarters": "123 Example St, City, Country"
+            "LinkedIn": "https://linkedin.com/company/example",
+            "Headquarters": "123 Example St, City, Country",
             "Yahoo Finance": "https://finance.yahoo.com/quote/EXAMPLE",
-            "Company Description": "Example Corp is a leading company in...",
+            "Company Description": "Example Corp is a leading company in..."
         }}
         """
 
@@ -97,6 +97,53 @@ class Scrapex:
         except Exception as e:
             return None, f"Analysis Error: {str(e)}"
 
+    def score_lead(self, company_data):
+        """
+        Performs real-time lead scoring and prioritization using simple heuristics.
+        
+        Parameters:
+            company_data (dict): Company details as a dictionary.
+            
+        Returns:
+            dict: A dictionary containing "Real-Time Lead Score" and "Scoring Reason".
+        """
+        score = 0
+        reasons = []
+        
+        # Check for Email validity
+        email = company_data.get("Email", "")
+        if email and "@" in email:
+            score += 1
+            reasons.append("Valid Email provided")
+        else:
+            reasons.append("Missing or invalid Email")
+        
+        # Check for Website validity
+        website = company_data.get("Website", "")
+        if website and website.startswith("http"):
+            score += 1
+            reasons.append("Valid Website provided")
+        else:
+            reasons.append("Missing or invalid Website")
+        
+        # Check for LinkedIn profile
+        linkedin = company_data.get("LinkedIn", "")
+        if linkedin and "linkedin" in linkedin.lower():
+            score += 1
+            reasons.append("LinkedIn profile provided")
+        else:
+            reasons.append("Missing LinkedIn profile")
+        
+        # Determine lead score label based on heuristic score
+        if score >= 3:
+            lead_score = "High"
+        elif score == 2:
+            lead_score = "Medium"
+        else:
+            lead_score = "Low"
+        
+        return {"Real-Time Lead Score": lead_score, "Scoring Reason": "; ".join(reasons)}
+
     def save(self, folder='results'):
         """
         Saves the scraped company data into CSV and Excel formats.
@@ -107,12 +154,10 @@ class Scrapex:
             csv_path = os.path.join(folder, 'data.csv')
             excel_path = os.path.join(folder, 'data.xlsx')
 
-            # Check if company_data attribute exists and is not None
             if not hasattr(self, 'company_data') or self.company_data is None:
                 print("Error in save(): 'company_data' attribute is not set.")
                 return False
 
-            # If CSV file exists, read and concatenate
             if os.path.exists(csv_path):
                 try:
                     existing_data = pd.read_csv(csv_path)
@@ -128,7 +173,6 @@ class Scrapex:
                 new_data.to_excel(excel_path, index=False)
                 print(f"Data successfully updated in {folder}/")
             else:
-                # If no CSV file exists, simply write the new data.
                 self.company_data.to_csv(csv_path, index=False)
                 self.company_data.to_excel(excel_path, index=False)
                 print(f"Data saved for the first time in {folder}/")

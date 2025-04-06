@@ -2,16 +2,15 @@ import streamlit as st
 from scrapex_class import Scrapex
 import pandas as pd
 import os
+import plotly.express as px
 
-# Set page configuration, display logo and title
 st.set_page_config(page_title="ScrapeX - AI-Powered Scraper", layout="wide")
 st.image("ScrapeX Logo.png", width=150)
 st.title("ScrapeX: AI-Powered Scraper")
 
-# Inject custom CSS for button styling
 st.markdown("""
     <style>
-        /* Default button styling (if any st.button is not overridden) */
+        /* Default button styling */
         .stButton > button {
             background-color: #007bff;
             color: white;
@@ -22,7 +21,7 @@ st.markdown("""
         .stButton > button:hover {
             background-color: #0056b3;
         }
-        /* Download button styling: target st.download_button wrapper */
+        /* Download button styling */
         .stDownloadButton > button {
             background-color: #28a745 !important;
             color: white !important;
@@ -33,7 +32,7 @@ st.markdown("""
         .stDownloadButton > button:hover {
             background-color: #218838 !important;
         }
-        /* Update button styling: wrap the update button in a container with an ID */
+        /* Update button styling */
         #update-button-container button {
             background-color: #f1c40f;
             color: white;
@@ -49,7 +48,6 @@ st.markdown("""
 
 scraper = Scrapex()
 
-# Initialize session state variables to avoid key errors
 if "company_data" not in st.session_state:
     st.session_state.company_data = None
 if "df_result" not in st.session_state:
@@ -114,25 +112,47 @@ def search_and_analyze():
                 if analysis_error:
                     st.error(f"{analysis_error}")
                 else:
-                    # Integrate the analysis result into the company data DataFrame.
                     df = st.session_state.company_data.copy()
-                    # For each key from the analysis, add a new column with that value.
                     for key, value in analysis_result.items():
                         df[key] = value
                     st.session_state.company_data = df
 
-# Main input and action buttons
+def score_lead_saved_data_callback():
+    csv_file_path = os.path.join("results", "data.csv")
+    if not os.path.exists(csv_file_path):
+        st.warning("No saved data found. Please run scraping and update saved data first.")
+        return
+    try:
+        lead_scores = []
+        scoring_reasons = []
+
+        for index, row in saved_df.iterrows():
+            company_dict = row.to_dict()
+            scoring = scraper.score_lead(company_dict)
+            lead_scores.append(scoring.get("Real-Time Lead Score", "N/A"))
+            scoring_reasons.append(scoring.get("Scoring Reason", ""))
+
+        saved_df["Real-Time Lead Score"] = lead_scores
+        saved_df["Scoring Reason"] = scoring_reasons
+
+        saved_df.to_csv(csv_file_path, index=False)
+        excel_file_path = os.path.join("results", "data.xlsx")
+        saved_df.to_excel(excel_file_path, index=False)
+
+        st.success("Real-Time Lead Scoring updated for saved data!")
+    except Exception as e:
+        st.error(f"Error updating saved data: {e}")
+
+# Input field for company name.
 st.text_input("Enter a company name:", key="input_company")
 st.button("Analyze", on_click=search_and_analyze)
 
 if st.session_state.company_data is not None:
-    company_name = st.session_state.company_data.iloc[0]["Company Name"]
+    company_name = st.session_state.company_data.iloc[0].get("Company Name", "Data")
     st.subheader("Company Information")
     st.dataframe(st.session_state.company_data)
 
-    # Convert DataFrame to CSV bytes
     csv = st.session_state.company_data.to_csv(index=False).encode()
-
     st.download_button(
         label="Download CSV",
         data=csv,
@@ -143,13 +163,8 @@ if st.session_state.company_data is not None:
     st.markdown('<div id="update-button-container">', unsafe_allow_html=True)
     st.button("Update Data", on_click=update_data_callback)
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.subheader("Company Financial Data")
-    # code for displaying financial data from yahoo finance
-    st.subheader("Company Recent News")
-    # code for displaying recent news from Yahoo Finance
-    
 
+# Optionally display saved data from data.csv.
 st.markdown("### Content of Saved Data (data.csv)")
 csv_file_path = os.path.join("results", "data.csv")
 if os.path.exists(csv_file_path):
@@ -157,3 +172,5 @@ if os.path.exists(csv_file_path):
     st.dataframe(saved_df)
 else:
     st.info("No saved data.csv file found in the 'results' folder.")
+    
+st.button("Update Score Lead", on_click=score_lead_saved_data_callback)
