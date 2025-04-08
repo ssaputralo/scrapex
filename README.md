@@ -22,7 +22,7 @@ ScrapeX is a Streamlit-based web application that leverages Google Generative AI
 2. Install dependencies on file "dependencies.ipynb"
 
 ## How to Run the Application
-1. Run Streamlit ```streamlit run scrapex_interface.py``` or ```python -m streamlit run scrapex_interface.py```
+1. Run Streamlit: ```streamlit run scrapex_interface.py``` or ```python -m streamlit run scrapex_interface.py```
 2. Use the application: Open the URL provided in your browser. Enter a company name in the input field and click Analyze to perform the scraping and lead analysis.
 
 ## Code Structure
