@@ -16,7 +16,7 @@ ScrapeX is a Streamlit-based web application that leverages Google Generative AI
  * google-generativeai
 
 ## Installation
-1. **Clone the Repository**
+1. Clone the repository:
    ```bash git clone https://github.com/yourusername/scrapex.git```
    ```cd scrapex ```
 2. Install dependencies on file "dependencies.ipynb"
