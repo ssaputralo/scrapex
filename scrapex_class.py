@@ -2,7 +2,6 @@ import google.generativeai as genai
 import os
 import pandas as pd
 import json
-import re
 
 class Scrapex:
     def __init__(self):
@@ -67,50 +66,18 @@ class Scrapex:
 
     def analyze_lead(self, company_data):
         """
-        Uses Gemini AI to analyze the company's lead quality.
-        
-        Returns:
-            tuple: (analysis dictionary or None, error message or None)
-        """
-        prompt = f"""
-        Based on the following company data:
-        {json.dumps(company_data, indent=2)}
-
-        Rate the company's potential as a business lead.
-        Provide insights in a structured JSON format like:
-        {{
-            "Lead Score": "High",
-            "Reasoning": "Strong online presence and multiple contact options."
-        }}
-        """
-
-        try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
-            ai_text = response.text.strip()
-            parsed_analysis = self._extract_json(ai_text)
-            
-            if parsed_analysis:
-                return parsed_analysis, None
-            else:
-                return None, "Analysis Error: Failed to extract valid JSON."
-        except Exception as e:
-            return None, f"Analysis Error: {str(e)}"
-
-    def score_lead(self, company_data):
-        """
         Performs real-time lead scoring and prioritization using simple heuristics.
+        (Fungsi ini menggunakan pendekatan heuristik dan mengembalikan "Lead Score" dan "Scoring Reason".)
         
         Parameters:
             company_data (dict): Company details as a dictionary.
             
         Returns:
-            dict: A dictionary containing "Real-Time Lead Score" and "Scoring Reason".
+            dict: A dictionary containing "Lead Score" and "Scoring Reason".
         """
         score = 0
         reasons = []
         
-        # Check for Email validity
         email = company_data.get("Email", "")
         if email and "@" in email:
             score += 1
@@ -118,7 +85,6 @@ class Scrapex:
         else:
             reasons.append("Missing or invalid Email")
         
-        # Check for Website validity
         website = company_data.get("Website", "")
         if website and website.startswith("http"):
             score += 1
@@ -126,7 +92,6 @@ class Scrapex:
         else:
             reasons.append("Missing or invalid Website")
         
-        # Check for LinkedIn profile
         linkedin = company_data.get("LinkedIn", "")
         if linkedin and "linkedin" in linkedin.lower():
             score += 1
@@ -134,7 +99,6 @@ class Scrapex:
         else:
             reasons.append("Missing LinkedIn profile")
         
-        # Determine lead score label based on heuristic score
         if score >= 3:
             lead_score = "High"
         elif score == 2:
@@ -142,7 +106,7 @@ class Scrapex:
         else:
             lead_score = "Low"
         
-        return {"Real-Time Lead Score": lead_score, "Scoring Reason": "; ".join(reasons)}
+        return {"Lead Score": lead_score, "Scoring Reason": "; ".join(reasons)}
 
     def save(self, folder='results'):
         """
@@ -152,7 +116,6 @@ class Scrapex:
         try:
             os.makedirs(folder, exist_ok=True)
             csv_path = os.path.join(folder, 'data.csv')
-            excel_path = os.path.join(folder, 'data.xlsx')
 
             if not hasattr(self, 'company_data') or self.company_data is None:
                 print("Error in save(): 'company_data' attribute is not set.")
@@ -165,16 +128,14 @@ class Scrapex:
                     print("Error reading existing CSV file:", read_err)
                     existing_data = None
 
-                if existing_data is not None:
+                if existing_data is not None and not existing_data.empty:
                     new_data = pd.concat([existing_data, self.company_data], ignore_index=True)
                 else:
                     new_data = self.company_data.copy()
                 new_data.to_csv(csv_path, index=False)
-                new_data.to_excel(excel_path, index=False)
                 print(f"Data successfully updated in {folder}/")
             else:
                 self.company_data.to_csv(csv_path, index=False)
-                self.company_data.to_excel(excel_path, index=False)
                 print(f"Data saved for the first time in {folder}/")
             return True
         except Exception as e:

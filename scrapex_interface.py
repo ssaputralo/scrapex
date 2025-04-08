@@ -2,9 +2,8 @@ import streamlit as st
 from scrapex_class import Scrapex
 import pandas as pd
 import os
-import plotly.express as px
 
-st.set_page_config(page_title="ScrapeX - AI-Powered Scraper", layout="wide")
+st.set_page_config(page_title="ScrapeX: AI-Powered Scraper", layout="wide")
 st.image("ScrapeX Logo.png", width=150)
 st.title("ScrapeX: AI-Powered Scraper")
 
@@ -107,15 +106,12 @@ def search_and_analyze():
             st.session_state.company_data = df_result
 
             with st.spinner("Analyzing lead quality..."):
-                analysis_result, analysis_error = scraper.analyze_lead(df_result.to_dict())
-                
-                if analysis_error:
-                    st.error(f"{analysis_error}")
-                else:
-                    df = st.session_state.company_data.copy()
-                    for key, value in analysis_result.items():
-                        df[key] = value
-                    st.session_state.company_data = df
+                analysis_result = scraper.analyze_lead(df_result.iloc[0].to_dict())
+                df = st.session_state.company_data.copy()
+                for key, value in analysis_result.items():
+                    df[key] = value
+                st.session_state.company_data = df
+
 
 def score_lead_saved_data_callback():
     csv_file_path = os.path.join("results", "data.csv")
@@ -123,23 +119,25 @@ def score_lead_saved_data_callback():
         st.warning("No saved data found. Please run scraping and update saved data first.")
         return
     try:
+        if os.path.getsize(csv_file_path) == 0:
+            st.info("Saved CSV file is empty.")
+            return
+
+        saved_df = pd.read_csv(csv_file_path)
         lead_scores = []
         scoring_reasons = []
-
+        
         for index, row in saved_df.iterrows():
             company_dict = row.to_dict()
-            scoring = scraper.score_lead(company_dict)
-            lead_scores.append(scoring.get("Real-Time Lead Score", "N/A"))
+            scoring = scraper.analyze_lead(company_dict)
+            lead_scores.append(scoring.get("Lead Score", "N/A"))
             scoring_reasons.append(scoring.get("Scoring Reason", ""))
 
-        saved_df["Real-Time Lead Score"] = lead_scores
+        saved_df["Lead Score"] = lead_scores
         saved_df["Scoring Reason"] = scoring_reasons
 
         saved_df.to_csv(csv_file_path, index=False)
-        excel_file_path = os.path.join("results", "data.xlsx")
-        saved_df.to_excel(excel_file_path, index=False)
-
-        st.success("Real-Time Lead Scoring updated for saved data!")
+        st.success("Lead Scoring updated for saved data!")
     except Exception as e:
         st.error(f"Error updating saved data: {e}")
 
@@ -164,12 +162,18 @@ if st.session_state.company_data is not None:
     st.button("Update Data", on_click=update_data_callback)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Optionally display saved data from data.csv.
 st.markdown("### Content of Saved Data (data.csv)")
 csv_file_path = os.path.join("results", "data.csv")
+
 if os.path.exists(csv_file_path):
-    saved_df = pd.read_csv(csv_file_path)
-    st.dataframe(saved_df)
+    try:
+        if os.path.getsize(csv_file_path) > 0:
+            saved_df = pd.read_csv(csv_file_path)
+            st.dataframe(saved_df)
+        else:
+            st.info("data.csv exists but is empty.")
+    except Exception as e:
+        st.error(f"Error reading saved data: {e}")
 else:
     st.info("No saved data.csv file found in the 'results' folder.")
     
