@@ -26,6 +26,15 @@ ScrapeX is a Streamlit-based web application that leverages Google Generative AI
    ```
    Restart terminal/VS Code after running this command.
 
+### Streamlit Cloud Setup
+If you deploy this app to Streamlit Cloud, set the key in app Secrets:
+
+```toml
+GEMINI_API_KEY = "YOUR_API_KEY"
+```
+
+Do not commit real API keys into source code.
+
 ## How to Run the Application
 1. Run Streamlit: ```streamlit run scrapex_interface.py``` or ```python -m streamlit run scrapex_interface.py```
 2. Use the application: Open the URL provided in your browser. Enter a company name in the input field and click Analyze to perform the scraping and lead analysis.

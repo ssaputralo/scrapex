@@ -45,7 +45,26 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-scraper = Scrapex()
+def get_api_key():
+    """Read API key from environment first, then Streamlit secrets (for cloud)."""
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if api_key:
+        return api_key
+
+    try:
+        secrets = st.secrets
+        return secrets.get("GEMINI_API_KEY") or secrets.get("GOOGLE_API_KEY")
+    except Exception:
+        return None
+
+
+scraper = Scrapex(api_key=get_api_key())
+
+if not scraper._is_configured:
+    st.warning(
+        "Gemini API key is not configured. "
+        "Set GEMINI_API_KEY in environment, or add GEMINI_API_KEY in Streamlit secrets for cloud."
+    )
 
 if "company_data" not in st.session_state:
     st.session_state.company_data = None

@@ -4,16 +4,24 @@ import pandas as pd
 import json
 
 class Scrapex:
-    def __init__(self):
-        """Initialize Google Gemini API Key."""
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "Missing Gemini API key. Set GEMINI_API_KEY (recommended) "
-                "or GOOGLE_API_KEY in your environment."
-            )
+    def __init__(self, api_key=None):
+        """Initialize Gemini client with API key from argument or environment."""
+        self._is_configured = False
+        self._config_error = None
 
-        genai.configure(api_key=api_key)
+        resolved_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not resolved_key:
+            self._config_error = (
+                "Missing Gemini API key. Configure GEMINI_API_KEY or GOOGLE_API_KEY "
+                "(or Streamlit Secrets for cloud deployment)."
+            )
+        else:
+            try:
+                genai.configure(api_key=resolved_key)
+                self._is_configured = True
+            except Exception as e:
+                self._config_error = f"Failed to configure Gemini client: {e}"
+
         self._preferred_models = [
             "gemini-2.0-flash",
             "gemini-1.5-flash-latest",
@@ -91,6 +99,9 @@ class Scrapex:
         """
 
         try:
+            if not self._is_configured:
+                return None, f"Search Error: {self._config_error}"
+
             model_candidates = self._resolve_model_candidates()
             last_error = None
             for model_name in model_candidates:
