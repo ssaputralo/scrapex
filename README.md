@@ -20,6 +20,11 @@ ScrapeX is a Streamlit-based web application that leverages Google Generative AI
    ```bash git clone https://github.com/yourusername/scrapex.git```
    ```cd scrapex ```
 2. Install dependencies on file "dependencies.ipynb"
+3. Set Gemini API key as an environment variable:
+   ```powershell
+   setx GEMINI_API_KEY "YOUR_API_KEY"
+   ```
+   Restart terminal/VS Code after running this command.
 
 ## How to Run the Application
 1. Run Streamlit: ```streamlit run scrapex_interface.py``` or ```python -m streamlit run scrapex_interface.py```

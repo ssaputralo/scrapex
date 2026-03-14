@@ -6,13 +6,46 @@ import json
 class Scrapex:
     def __init__(self):
         """Initialize Google Gemini API Key."""
-        genai.configure(api_key="AIzaSyDl-XgHR91v7Q_8o5DwqmKemRqDWiZDJX8")  # 🔹 Replace with your actual API key
-        self._model_candidates = [
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "Missing Gemini API key. Set GEMINI_API_KEY (recommended) "
+                "or GOOGLE_API_KEY in your environment."
+            )
+
+        genai.configure(api_key=api_key)
+        self._preferred_models = [
             "gemini-2.0-flash",
             "gemini-1.5-flash-latest",
             "gemini-1.5-flash",
             "gemini-1.5-pro-latest"
         ]
+
+    def _resolve_model_candidates(self):
+        """
+        Build model candidates from available API models that support generateContent.
+        Returns preferred models first if they exist, then other compatible Gemini models.
+        """
+        available = []
+        for model in genai.list_models():
+            methods = getattr(model, "supported_generation_methods", []) or []
+            if "generateContent" not in methods:
+                continue
+
+            model_name = getattr(model, "name", "")
+            # API may return names like "models/gemini-1.5-flash".
+            if model_name.startswith("models/"):
+                model_name = model_name.split("/", 1)[1]
+
+            if model_name.startswith("gemini"):
+                available.append(model_name)
+
+        if not available:
+            return self._preferred_models
+
+        prioritized = [name for name in self._preferred_models if name in available]
+        others = [name for name in available if name not in prioritized]
+        return prioritized + others
 
     def _extract_json(self, text):
         """
@@ -58,8 +91,9 @@ class Scrapex:
         """
 
         try:
+            model_candidates = self._resolve_model_candidates()
             last_error = None
-            for model_name in self._model_candidates:
+            for model_name in model_candidates:
                 try:
                     model = genai.GenerativeModel(model_name)
                     response = model.generate_content(prompt)
@@ -75,7 +109,7 @@ class Scrapex:
 
             return None, (
                 "Search Error: No compatible Gemini model was available. "
-                f"Tried: {', '.join(self._model_candidates)}. "
+                f"Tried: {', '.join(model_candidates)}. "
                 f"Last error: {last_error}"
             )
         except Exception as e:
