@@ -7,6 +7,12 @@ class Scrapex:
     def __init__(self):
         """Initialize Google Gemini API Key."""
         genai.configure(api_key="AIzaSyDl-XgHR91v7Q_8o5DwqmKemRqDWiZDJX8")  # 🔹 Replace with your actual API key
+        self._model_candidates = [
+            "gemini-2.0-flash",
+            "gemini-1.5-flash-latest",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro-latest"
+        ]
 
     def _extract_json(self, text):
         """
@@ -52,15 +58,26 @@ class Scrapex:
         """
 
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
-            ai_text = response.text.strip()
-            parsed_data = self._extract_json(ai_text)
-            
-            if parsed_data:
-                return pd.DataFrame([parsed_data]), None
-            else:
-                return None, "Search Error: Failed to extract valid JSON."
+            last_error = None
+            for model_name in self._model_candidates:
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content(prompt)
+                    ai_text = response.text.strip()
+                    parsed_data = self._extract_json(ai_text)
+
+                    if parsed_data:
+                        return pd.DataFrame([parsed_data]), None
+                    return None, "Search Error: Failed to extract valid JSON."
+                except Exception as model_error:
+                    last_error = model_error
+                    continue
+
+            return None, (
+                "Search Error: No compatible Gemini model was available. "
+                f"Tried: {', '.join(self._model_candidates)}. "
+                f"Last error: {last_error}"
+            )
         except Exception as e:
             return None, f"Search Error: {str(e)}"
 
